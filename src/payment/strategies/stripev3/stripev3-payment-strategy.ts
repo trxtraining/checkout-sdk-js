@@ -18,22 +18,13 @@ import PaymentMethodActionCreator from '../../payment-method-action-creator';
 import { PaymentInitializeOptions, PaymentRequestOptions } from '../../payment-request-options';
 import PaymentStrategy from '../payment-strategy';
 
-import isIndividualCardElementOptions, { PaymentIntent, PaymentMethod as StripePaymentMethod, StripeAdditionalAction, StripeAddress, StripeBillingDetails, StripeCardElements, StripeConfirmIdealPaymentData, StripeConfirmPaymentData, StripeConfirmSepaPaymentData, StripeElement, StripeElements, StripeElementOptions, StripeElementType, StripeError, StripePaymentMethodType, StripeV3Client } from './stripev3';
+import isIndividualCardElementOptions, { PaymentIntent, PaymentMethod as StripePaymentMethod, StripeAdditionalAction, StripeAddress, StripeBillingDetails, StripeCardElements, StripeConfirmIdealPaymentData, StripeConfirmPaymentData, StripeConfirmSepaPaymentData, StripeElement, StripeElementOptions, StripeElementType, StripeError, StripePaymentMethodType, StripeV3Client } from './stripev3';
 import StripeV3PaymentInitializeOptions from './stripev3-initialize-options';
 import StripeV3ScriptLoader from './stripev3-script-loader';
 
 const APM_REDIRECT = [StripeElementType.Alipay, StripeElementType.iDEAL];
 
 export default class StripeV3PaymentStrategy implements PaymentStrategy {
-    private _initializeOptions?: StripeV3PaymentInitializeOptions;
-    private _stripeV3Client?: StripeV3Client;
-    private _stripeElements?: StripeElements;
-    private _stripeElement?: StripeElement;
-    private _stripeCardElements?: StripeCardElements;
-    private _useIndividualCardFields?: boolean;
-    private _hostedForm?: HostedForm;
-    private _reusePaymentIntent?: boolean;
-
     constructor(
         private _store: CheckoutStore,
         private _paymentMethodActionCreator: PaymentMethodActionCreator,
@@ -52,20 +43,20 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
             throw new InvalidArgumentError('Unable to initialize payment because "gatewayId" argument is not provided.');
         }
 
-        this._initializeOptions = stripev3;
+        (window as any)._initializeOptions = stripev3;
 
         const paymentMethod = this._store.getState().paymentMethods.getPaymentMethodOrThrow(methodId);
         const { initializationData: { stripePublishableKey, stripeConnectedAccount, useIndividualCardFields, reusePaymentIntent } } = paymentMethod;
         const form = this._getInitializeOptions().form;
 
-        this._useIndividualCardFields = useIndividualCardFields;
-        this._reusePaymentIntent = reusePaymentIntent;
+        (window as any)._useIndividualCardFields = useIndividualCardFields;
+        (window as any)._reusePaymentIntent = reusePaymentIntent;
 
         if (this._isCreditCard(methodId) && this._shouldShowTSVHostedForm(methodId, gatewayId) && form) {
-            this._hostedForm = await this._mountCardVerificationFields(form);
+            (window as any)._hostedForm = await this._mountCardVerificationFields(form);
         } else {
-            this._stripeV3Client = await this._loadStripeJs(stripePublishableKey, stripeConnectedAccount);
-            this._stripeElement = await this._mountCardFields(methodId);
+            (window as any)._stripeV3Client = await this._loadStripeJs(stripePublishableKey, stripeConnectedAccount);
+            (window as any)._stripeElement = await this._mountCardFields(methodId);
         }
 
         return Promise.resolve(this._store.getState());
@@ -115,7 +106,7 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
                 confirm: false,
             };
 
-            if (method === StripeElementType.CreditCard && this._reusePaymentIntent === true) {
+            if (method === StripeElementType.CreditCard && (window as any)._reusePaymentIntent === true) {
                 formattedPayload.client_token = clientToken;
             }
 
@@ -204,7 +195,7 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
             }
 
             default:
-                const card = this._useIndividualCardFields ? this._getStripeCardElements()[0] : this._getStripeElement();
+                const card = (window as any)._useIndividualCardFields ? this._getStripeCardElements()[0] : this._getStripeElement();
                 const billingDetails = this._mapStripeBillingDetails(
                     this._store.getState().billingAddress.getBillingAddress(),
                     this._store.getState().customer.getCustomer()
@@ -224,8 +215,8 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
             confirm: false,
         };
 
-        if (this._isHostedPaymentFormEnabled(payment.methodId, payment.gatewayId) && this._hostedForm) {
-            const form = this._hostedForm;
+        if (this._isHostedPaymentFormEnabled(payment.methodId, payment.gatewayId) && (window as any)._hostedForm) {
+            const form = (window as any)._hostedForm;
 
             await form.validate();
             await form.submit(payment);
@@ -239,35 +230,35 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
     }
 
     private _getInitializeOptions(): StripeV3PaymentInitializeOptions {
-        if (!this._initializeOptions) {
+        if (!(window as any)._initializeOptions) {
             throw new NotInitializedError(NotInitializedErrorType.PaymentNotInitialized);
         }
 
-        return this._initializeOptions;
+        return (window as any)._initializeOptions;
     }
 
     private _getStripeCardElements(): StripeCardElements {
-        if (!this._stripeCardElements) {
+        if (!(window as any)._stripeCardElements) {
             throw new NotInitializedError(NotInitializedErrorType.PaymentNotInitialized);
         }
 
-        return this._stripeCardElements;
+        return (window as any)._stripeCardElements;
     }
 
     private _getStripeElement(): StripeElement {
-        if (!this._stripeElement) {
+        if (!(window as any)._stripeElement) {
             throw new NotInitializedError(NotInitializedErrorType.PaymentNotInitialized);
         }
 
-        return this._stripeElement;
+        return (window as any)._stripeElement;
     }
 
     private _getStripeJs(): StripeV3Client {
-        if (!this._stripeV3Client) {
+        if (!(window as any)._stripeV3Client) {
             throw new NotInitializedError(NotInitializedErrorType.PaymentNotInitialized);
         }
 
-        return this._stripeV3Client;
+        return (window as any)._stripeV3Client;
     }
 
     private _handleEmptyPaymentIntentError(
@@ -284,7 +275,7 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
     }
 
     private async _loadStripeJs(stripePublishableKey: string, stripeConnectedAccount: string): Promise<StripeV3Client> {
-        if (this._stripeV3Client) { return Promise.resolve(this._stripeV3Client); }
+        if ((window as any)._stripeV3Client) { return Promise.resolve((window as any)._stripeV3Client); }
 
         return await this._stripeScriptLoader.load(
             stripePublishableKey,
@@ -315,7 +306,7 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
         const name = `${firstName} ${lastName}`.trim();
         const { options } = this._getInitializeOptions();
 
-        if (this._useIndividualCardFields && isIndividualCardElementOptions(options)) {
+        if ((window as any)._useIndividualCardFields && isIndividualCardElementOptions(options)) {
             const { zipCodeElementOptions } = options;
 
             if (zipCodeElementOptions) {
@@ -375,21 +366,21 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
         let stripeElement: StripeElement;
 
         return new Promise((resolve, reject) => {
-            if (!this._stripeElements) {
-                this._stripeElements = this._getStripeJs().elements();
+            if (!(window as any)._stripeElements) {
+                (window as any)._stripeElements = this._getStripeJs().elements();
             }
 
             switch (methodId) {
                 case StripeElementType.CreditCard:
-                    if (this._useIndividualCardFields && isIndividualCardElementOptions(options)) {
+                    if ((window as any)._useIndividualCardFields && isIndividualCardElementOptions(options)) {
                         const { cardNumberElementOptions, cardExpiryElementOptions, cardCvcElementOptions } = options;
 
-                        const cardNumberElement = this._stripeElements.getElement(StripeElementType.CardNumber) || this._stripeElements.create(StripeElementType.CardNumber, cardNumberElementOptions);
-                        const cardExpiryElement = this._stripeElements.getElement(StripeElementType.CardExpiry) || this._stripeElements.create(StripeElementType.CardExpiry, cardExpiryElementOptions);
-                        const cardCvcElement = this._stripeElements.getElement(StripeElementType.CardCvc) || this._stripeElements.create(StripeElementType.CardCvc, cardCvcElementOptions);
+                        const cardNumberElement = (window as any)._stripeElements.getElement(StripeElementType.CardNumber) || (window as any)._stripeElements.create(StripeElementType.CardNumber, cardNumberElementOptions);
+                        const cardExpiryElement = (window as any)._stripeElements.getElement(StripeElementType.CardExpiry) || (window as any)._stripeElements.create(StripeElementType.CardExpiry, cardExpiryElementOptions);
+                        const cardCvcElement = (window as any)._stripeElements.getElement(StripeElementType.CardCvc) || (window as any)._stripeElements.create(StripeElementType.CardCvc, cardCvcElementOptions);
 
-                        this._stripeCardElements = [cardNumberElement, cardExpiryElement, cardCvcElement];
-                        stripeElement = this._stripeCardElements[0];
+                        (window as any)._stripeCardElements = [cardNumberElement, cardExpiryElement, cardCvcElement];
+                        stripeElement = (window as any)._stripeCardElements[0];
 
                         try {
                             cardNumberElement.mount(`#${cardNumberElementOptions.containerId}`);
@@ -399,7 +390,7 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
                             reject(new InvalidArgumentError('Unable to mount Stripe component without valid container ID.'));
                         }
                     } else {
-                        stripeElement = this._stripeElements.getElement(methodId) || this._stripeElements.create(methodId, options as StripeElementOptions);
+                        stripeElement = (window as any)._stripeElements.getElement(methodId) || (window as any)._stripeElements.create(methodId, options as StripeElementOptions);
 
                         try {
                             stripeElement.mount(`#${containerId}`);
@@ -411,7 +402,7 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
                     break;
                 case StripeElementType.iDEAL:
                 case StripeElementType.Sepa:
-                    stripeElement = this._stripeElements.getElement(methodId) || this._stripeElements.create(methodId, options as StripeElementOptions);
+                    stripeElement = (window as any)._stripeElements.getElement(methodId) || (window as any)._stripeElements.create(methodId, options as StripeElementOptions);
 
                     try {
                         stripeElement.mount(`#${containerId}`);
@@ -476,7 +467,7 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
             let result;
             let needsConfirm = false;
 
-            if (this._reusePaymentIntent) {
+            if ((window as any)._reusePaymentIntent) {
                 result = await this._getStripeJs().confirmCardPayment(clientSecret);
             } else {
                 result = await this._getStripeJs().handleCardAction(clientSecret);
@@ -515,9 +506,9 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
     }
 
     private _unmountElement(): void {
-        if (this._stripeElement) {
-            this._stripeElement.unmount();
-            this._stripeElement = undefined;
+        if ((window as any)._stripeElement) {
+            (window as any)._stripeElement.unmount();
+            (window as any)._stripeElement = undefined;
         }
     }
 }
