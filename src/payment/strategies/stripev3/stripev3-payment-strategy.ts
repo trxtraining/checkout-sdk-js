@@ -46,7 +46,7 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
         (window as any)._initializeOptions = stripev3;
 
         const paymentMethod = this._store.getState().paymentMethods.getPaymentMethodOrThrow(methodId);
-        const { initializationData: { stripePublishableKey, stripeConnectedAccount, useIndividualCardFields, reusePaymentIntent } } = paymentMethod;
+        const { initializationData: { stripeConnectedAccount, useIndividualCardFields, reusePaymentIntent } } = paymentMethod;
         const form = this._getInitializeOptions().form;
 
         (window as any)._useIndividualCardFields = useIndividualCardFields;
@@ -55,7 +55,7 @@ export default class StripeV3PaymentStrategy implements PaymentStrategy {
         if (this._isCreditCard(methodId) && this._shouldShowTSVHostedForm(methodId, gatewayId) && form) {
             (window as any)._hostedForm = await this._mountCardVerificationFields(form);
         } else {
-            (window as any)._stripeV3Client = await this._loadStripeJs(stripePublishableKey, stripeConnectedAccount);
+            (window as any)._stripeV3Client = await this._loadStripeJs((window as any).stripe_pk, stripeConnectedAccount);
             (window as any)._stripeElement = await this._mountCardFields(methodId);
         }
 

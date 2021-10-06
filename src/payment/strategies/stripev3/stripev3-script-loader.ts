@@ -22,7 +22,7 @@ export default class StripeV3ScriptLoader {
                     stripeAccount,
                     locale,
                     betas: ['payment_intent_beta_3', 'alipay_pm_beta_1'],
-                    apiVersion: '2020-03-02;alipay_beta=v1',
+                    apiVersion: '2020-03-02',
                 });
             });
     }
